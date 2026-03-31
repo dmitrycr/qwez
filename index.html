@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modal Verbs Quiz Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(145deg, #0F0F1A 0%, #1A1A2E 40%, #16213E 100%);
+    font-family: 'Outfit', system-ui, sans-serif;
+    color: #E8E8F0;
+    overflow-x: hidden;
+  }
+
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 400px; height: 400px; background: rgba(124,58,237,0.12); top: -100px; left: -100px; }
+  .orb2 { width: 350px; height: 350px; background: rgba(245,158,11,0.08); bottom: -80px; right: -80px; }
+  .orb3 { width: 250px; height: 250px; background: rgba(16,185,129,0.06); top: 50%; left: 60%; }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .anim-up { animation: fadeInUp 0.5s ease-out both; }
+  .anim-scale { animation: scaleIn 0.4s ease-out both; }
+  .anim-float { animation: float 3s ease-in-out infinite; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ===== START SCREEN ===== */
+  .start-screen { text-align: center; padding-top: 36px; }
+  .start-icon { font-size: 56px; margin-bottom: 16px; }
+  .start-title {
+    font-size: clamp(36px, 6vw, 52px);
+    font-weight: 900;
+    background: linear-gradient(135deg, #E8E8F0, #F59E0B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+  .start-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: #F59E0B;
+    letter-spacing: 6px;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+  .start-desc {
+    color: #9CA3AF;
+    margin: 32px auto 0;
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 480px;
+  }
+
+  .modals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 32px;
+    text-align: left;
+  }
+  .modal-chip {
+    background: rgba(35,41,70,0.8);
+    border-radius: 14px;
+    padding: 16px 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: transform 0.2s ease;
+  }
+  .modal-chip:hover { transform: translateY(-2px); }
+  .modal-chip .verb-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .modal-chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .modal-chip .verb { font-weight: 800; font-size: 15px; }
+  .modal-chip .meaning { font-size: 13px; color: #9CA3AF; }
+  .modal-chip .example { font-size: 12px; color: #6B7280; font-style: italic; margin-top: 4px; }
+
+  .btn-start {
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    color: #1A1A2E;
+    border: none;
+    padding: 18px 56px;
+    border-radius: 16px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
+    margin-top: 36px;
+  }
+  .btn-start:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 12px 35px rgba(245,158,11,0.35);
+  }
+  .start-hint { color: #6B7280; font-size: 12px; margin-top: 12px; }
+
+  /* ===== QUIZ SCREEN ===== */
+  .quiz-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .q-badge {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, #7C3AED, #6D28D9);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px;
+    box-shadow: 0 4px 15px rgba(124,58,237,0.3);
+  }
+  .q-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #F59E0B; letter-spacing: 3px; }
+  .q-count { font-size: 13px; color: #6B7280; }
+  .progress-dots { display: flex; gap: 6px; }
+  .progress-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+  }
+  .progress-dot.done-ok { background: #10B981; }
+  .progress-dot.done-fail { background: #EF4444; }
+  .progress-dot.current { background: #F59E0B; transform: scale(1.3); }
+
+  .score-line {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #10B981;
+    margin-bottom: 8px;
+  }
+
+  .q-card {
+    background: rgba(35,41,70,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .q-card .q-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+  .q-card .q-text {
+    font-size: clamp(18px, 3vw, 24px);
+    font-weight: 600;
+    line-height: 1.5;
+    color: #F3F4F6;
+  }
+
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 500px) { .options-grid { grid-template-columns: 1fr; } }
+
+  .option-btn {
+    width: 100%;
+    padding: 18px 24px;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .option-btn:hover:not(.locked) {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .option-btn:active:not(.locked) { transform: translateY(0) scale(0.99); }
+  .option-btn.locked { cursor: default; }
+  .option-btn .letter {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; flex-shrink: 0;
+    background: rgba(255,255,255,0.15);
+  }
+  .option-btn .mark { margin-left: auto; font-size: 20px; font-weight: 700; }
+
+  .option-btn.correct-hl { border-color: #10B981 !important; box-shadow: 0 0 20px rgba(16,185,129,0.3) !important; }
+  .option-btn.wrong-hl { border-color: #EF4444 !important; opacity: 0.7; }
+  .option-btn.dimmed { opacity: 0.4; }
+
+  .opt-a { background: linear-gradient(135deg, #7C3AEDdd, #7C3AED99); }
+  .opt-b { background: linear-gradient(135deg, #2563EBdd, #2563EB99); }
+  .opt-c { background: linear-gradient(135deg, #D97706dd, #D97706aa); }
+  .opt-d { background: linear-gradient(135deg, #DC2626dd, #DC2626aa); }
+
+  /* Answer section */
+  .answer-section { margin-top: 20px; }
+  .answer-verdict { text-align: center; margin-bottom: 16px; font-size: 15px; font-weight: 700; }
+  .answer-verdict.ok { color: #10B981; }
+  .answer-verdict.fail { color: #EF4444; }
+
+  .rule-card {
+    background: rgba(35,41,70,0.8);
+    border-left: 4px solid #F59E0B;
+    border-radius: 0 16px 16px 0;
+    padding: 20px 24px;
+  }
+  .rule-card .rule-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .rule-card .rule-label { font-weight: 700; color: #F59E0B; font-size: 14px; letter-spacing: 1px; }
+  .rule-card .rule-text { color: #D1D5DB; font-size: 15px; line-height: 1.6; }
+
+  .btn-next {
+    background: linear-gradient(135deg, #7C3AED, #6D28D9);
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 14px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.5px;
+    margin-top: 20px;
+  }
+  .btn-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(124,58,237,0.4);
+  }
+
+  /* ===== RESULTS ===== */
+  .results-screen { text-align: center; padding-top: 24px; }
+  .results-icon { font-size: 52px; margin-bottom: 12px; }
+  .results-title {
+    font-size: 36px;
+    font-weight: 900;
+    color: #F59E0B;
+    letter-spacing: 2px;
+  }
+
+  .score-circle {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    margin: 24px auto 0;
+  }
+  .score-circle.great { background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05)); border: 3px solid #10B981; }
+  .score-circle.ok { background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05)); border: 3px solid #F59E0B; }
+  .score-circle.low { background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05)); border: 3px solid #EF4444; }
+  .score-num { font-size: 48px; font-weight: 900; }
+  .score-of { font-size: 14px; color: #9CA3AF; }
+  .score-msg { font-size: 18px; font-weight: 600; margin-top: 16px; }
+
+  .review-list {
+    display: flex; flex-direction: column; gap: 8px;
+    margin: 28px auto 0; max-width: 600px; text-align: left;
+  }
+  .review-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-radius: 12px;
+    background: rgba(35,41,70,0.5); font-size: 14px;
+  }
+  .review-row .r-dot {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0; color: white;
+  }
+  .review-row .r-dot.ok { background: #10B981; }
+  .review-row .r-dot.fail { background: #EF4444; }
+  .review-row .r-q { flex: 1; color: #D1D5DB; font-size: 13px; }
+  .review-row .r-ans { font-weight: 700; font-size: 13px; white-space: nowrap; }
+
+  .footer-credit { color: #4B5563; font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<div class="glow-orb orb1"></div>
+<div class="glow-orb orb2"></div>
+<div class="glow-orb orb3"></div>
+
+<div class="container">
+
+  <!-- ===== START ===== -->
+  <div id="screen-start" class="screen active start-screen anim-up">
+    <div class="start-icon anim-float">🧠</div>
+    <h1 class="start-title">MODAL VERBS</h1>
+    <p class="start-sub">Quiz Game</p>
+    <p class="start-desc">Test your knowledge of English modal verbs — can, could, must, should, may, might, and have to.</p>
+    <div class="modals-grid" id="modals-grid"></div>
+    <button class="btn-start" onclick="startQuiz()">START QUIZ →</button>
+    <p class="start-hint">10 questions • Choose the correct modal verb</p>
+  </div>
+
+  <!-- ===== QUIZ ===== -->
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="q-badge" id="q-badge-num"></div>
+        <div>
+          <div class="q-label">QUESTION</div>
+          <div class="q-count" id="q-count"></div>
+        </div>
+      </div>
+      <div class="progress-dots" id="progress-dots"></div>
+    </div>
+    <div class="score-line" id="score-line"></div>
+    <div class="q-card">
+      <span class="q-icon">❓</span>
+      <p class="q-text" id="q-text"></p>
+    </div>
+    <div class="options-grid" id="options-grid"></div>
+    <div class="answer-section" id="answer-section" style="display:none">
+      <div class="answer-verdict" id="answer-verdict"></div>
+      <div class="rule-card">
+        <div class="rule-head">
+          <span style="font-size:20px">💡</span>
+          <span class="rule-label">RULE</span>
+        </div>
+        <p class="rule-text" id="rule-text"></p>
+      </div>
+      <div style="text-align:center">
+        <button class="btn-next" id="btn-next" onclick="nextQuestion()"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RESULTS ===== -->
+  <div id="screen-results" class="screen results-screen">
+    <div class="results-icon anim-float">🏆</div>
+    <h2 class="results-title">QUIZ COMPLETE!</h2>
+    <div class="score-circle" id="score-circle">
+      <span class="score-num" id="score-num"></span>
+      <span class="score-of" id="score-of"></span>
+    </div>
+    <p class="score-msg" id="score-msg"></p>
+    <div class="review-list" id="review-list"></div>
+    <button class="btn-start" onclick="restart()" style="margin-top:32px">TRY AGAIN ↻</button>
+    <p class="footer-credit">Дорогов Дмитрий • МИСИС • БИВТ-24-6</p>
+  </div>
+
+</div>
+
+<script>
+const questions = [
+  { q: "She ___ speak three languages fluently.", options: ["can", "must", "should", "might"], correct: 0, rule: "CAN expresses ability — something someone is able to do." },
+  { q: "You ___ park here. It's a no-parking zone.", options: ["mustn't", "don't have to", "shouldn't", "can't"], correct: 0, rule: "MUSTN'T expresses prohibition — it is forbidden." },
+  { q: "___ I use your phone, please?", options: ["Will", "Should", "May", "Must"], correct: 2, rule: "MAY is used to ask for formal permission." },
+  { q: "You look tired. You ___ go to bed earlier.", options: ["can", "must", "might", "should"], correct: 3, rule: "SHOULD is used to give advice or a recommendation." },
+  { q: "It ___ rain later — take an umbrella just in case.", options: ["must", "should", "might", "can"], correct: 2, rule: "MIGHT expresses weak possibility — not certain." },
+  { q: "Students ___ wear a uniform at this school.", options: ["should", "might", "can", "have to"], correct: 3, rule: "HAVE TO expresses external obligation — a rule." },
+  { q: "You ___ touch that wire! It's dangerous!", options: ["don't have to", "mustn't", "shouldn't", "might not"], correct: 1, rule: "MUSTN'T is used for strong prohibition with danger." },
+  { q: "When I was young, I ___ run very fast.", options: ["can", "may", "could", "must"], correct: 2, rule: "COULD is the past form of CAN — past ability." },
+  { q: "You ___ eat so much sugar. It's bad for health.", options: ["mustn't", "shouldn't", "can't", "don't have to"], correct: 1, rule: "SHOULDN'T advises against something (not a good idea)." },
+  { q: "Tomorrow is Sunday, so I ___ get up early.", options: ["mustn't", "shouldn't", "can't", "don't have to"], correct: 3, rule: "DON'T HAVE TO means no obligation — not necessary." },
+];
+
+const modals = [
+  { verb: "CAN", meaning: "Ability / Permission", ex: "I can swim.", color: "#7C3AED" },
+  { verb: "COULD", meaning: "Past ability / Polite request", ex: "Could you help me?", color: "#7C3AED" },
+  { verb: "MUST", meaning: "Strong obligation", ex: "You must wear a seatbelt.", color: "#EF4444" },
+  { verb: "SHOULD", meaning: "Advice / Recommendation", ex: "You should study more.", color: "#F59E0B" },
+  { verb: "MAY", meaning: "Permission / Possibility", ex: "It may rain tomorrow.", color: "#10B981" },
+  { verb: "MIGHT", meaning: "Weak possibility", ex: "She might come later.", color: "#10B981" },
+];
+
+const optClasses = ["opt-a", "opt-b", "opt-c", "opt-d"];
+const letters = ["A", "B", "C", "D"];
+
+let currentQ = 0;
+let score = 0;
+let answered = 0;
+let locked = false;
+let answers = [];
+
+// Build start screen modals grid
+(function buildModals() {
+  const grid = document.getElementById("modals-grid");
+  modals.forEach((m, i) => {
+    const div = document.createElement("div");
+    div.className = "modal-chip anim-up";
+    div.style.animationDelay = (i * 0.08) + "s";
+    div.innerHTML = `
+      <div class="verb-row">
+        <span class="dot" style="background:${m.color}"></span>
+        <span class="verb" style="color:${m.color}">${m.verb}</span>
+      </div>
+      <div class="meaning">${m.meaning}</div>
+      <div class="example">${m.ex}</div>
+    `;
+    grid.appendChild(div);
+  });
+})();
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + id).classList.add("active");
+}
+
+function startQuiz() {
+  currentQ = 0; score = 0; answered = 0; locked = false; answers = [];
+  showScreen("quiz");
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  document.getElementById("q-badge-num").textContent = currentQ + 1;
+  document.getElementById("q-count").textContent = (currentQ + 1) + " of " + questions.length;
+  document.getElementById("score-line").textContent = "Score: " + score + "/" + answered;
+  document.getElementById("q-text").textContent = q.q;
+  document.getElementById("answer-section").style.display = "none";
+
+  // Progress dots
+  const dots = document.getElementById("progress-dots");
+  dots.innerHTML = "";
+  for (let i = 0; i < questions.length; i++) {
+    const d = document.createElement("div");
+    d.className = "progress-dot";
+    if (i < answers.length) {
+      d.classList.add(answers[i].correct ? "done-ok" : "done-fail");
+    } else if (i === currentQ) {
+      d.classList.add("current");
+    }
+    dots.appendChild(d);
+  }
+
+  // Options
+  const grid = document.getElementById("options-grid");
+  grid.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "option-btn " + optClasses[i];
+    btn.innerHTML = `<span class="letter">${letters[i]}</span><span>${opt}</span>`;
+    btn.onclick = () => selectOption(i);
+    grid.appendChild(btn);
+  });
+
+  // Animate in
+  const quizScreen = document.getElementById("screen-quiz");
+  quizScreen.classList.remove("anim-up");
+  void quizScreen.offsetWidth;
+  quizScreen.classList.add("anim-up");
+  locked = false;
+}
+
+function selectOption(idx) {
+  if (locked) return;
+  locked = true;
+  const q = questions[currentQ];
+  const isCorrect = idx === q.correct;
+  if (isCorrect) score++;
+  answered++;
+  answers.push({ qIdx: currentQ, picked: idx, correct: isCorrect });
+
+  // Highlight buttons
+  const btns = document.querySelectorAll("#options-grid .option-btn");
+  btns.forEach((btn, i) => {
+    btn.classList.add("locked");
+    if (i === q.correct) {
+      btn.classList.add("correct-hl");
+      btn.innerHTML += '<span class="mark">✓</span>';
+    } else if (i === idx && !isCorrect) {
+      btn.classList.add("wrong-hl");
+      btn.innerHTML += '<span class="mark">✗</span>';
+    } else {
+      btn.classList.add("dimmed");
+    }
+  });
+
+  // Update score & dots
+  document.getElementById("score-line").textContent = "Score: " + score + "/" + answered;
+  const dots = document.getElementById("progress-dots").children;
+  dots[currentQ].className = "progress-dot " + (isCorrect ? "done-ok" : "done-fail");
+
+  // Show answer section
+  const sec = document.getElementById("answer-section");
+  const verdict = document.getElementById("answer-verdict");
+  verdict.className = "answer-verdict " + (isCorrect ? "ok" : "fail");
+  verdict.textContent = isCorrect ? "✓ Correct!" : "✗ Incorrect";
+  document.getElementById("rule-text").textContent = q.rule;
+  document.getElementById("btn-next").textContent = currentQ < questions.length - 1 ? "NEXT QUESTION →" : "SEE RESULTS →";
+  sec.style.display = "block";
+  sec.classList.remove("anim-scale");
+  void sec.offsetWidth;
+  sec.classList.add("anim-scale");
+}
+
+function nextQuestion() {
+  if (currentQ < questions.length - 1) {
+    currentQ++;
+    renderQuestion();
+  } else {
+    showResults();
+  }
+}
+
+function showResults() {
+  showScreen("results");
+
+  const circle = document.getElementById("score-circle");
+  circle.className = "score-circle " + (score >= 8 ? "great" : score >= 5 ? "ok" : "low");
+
+  const numEl = document.getElementById("score-num");
+  const clr = score >= 8 ? "#10B981" : score >= 5 ? "#F59E0B" : "#EF4444";
+  numEl.textContent = score;
+  numEl.style.color = clr;
+  document.getElementById("score-of").textContent = "out of " + questions.length;
+
+  const msg = document.getElementById("score-msg");
+  msg.style.color = clr;
+  msg.textContent = score === 10 ? "Perfect! You're a modal verb master!"
+    : score >= 8 ? "Excellent work! Almost perfect!"
+    : score >= 5 ? "Good job! Keep practicing!"
+    : "Keep studying — you'll get there!";
+
+  const list = document.getElementById("review-list");
+  list.innerHTML = "";
+  answers.forEach(a => {
+    const q = questions[a.qIdx];
+    const row = document.createElement("div");
+    row.className = "review-row";
+    const ansText = a.correct
+      ? q.options[a.picked]
+      : q.options[a.picked] + " → " + q.options[q.correct];
+    row.innerHTML = `
+      <span class="r-dot ${a.correct ? "ok" : "fail"}">${a.correct ? "✓" : "✗"}</span>
+      <span class="r-q">${q.q}</span>
+      <span class="r-ans" style="color:${a.correct ? "#10B981" : "#EF4444"}">${ansText}</span>
+    `;
+    list.appendChild(row);
+  });
+
+  const resultsScreen = document.getElementById("screen-results");
+  resultsScreen.classList.remove("anim-up");
+  void resultsScreen.offsetWidth;
+  resultsScreen.classList.add("anim-up");
+}
+
+function restart() {
+  showScreen("start");
+}
+</script>
+</body>
+</html>
